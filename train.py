@@ -10,6 +10,7 @@ import torch
 from torch import nn
 from torch import optim
 from model.unet_model import Ringed_Res_Unet
+from model.UNet_2Plus import UNet_2Plus
 from dataset.Defacto import load_dataset
 import matplotlib.pyplot as plt
 import time,os
@@ -30,11 +31,11 @@ def train_net(net,
     # iddataset = split_train_val(ids, val_percent)
 
     # splicing_1_img 개수는 12187
-    train_dataloader, val_dataloader = load_dataset(12184,
+    train_dataloader, val_dataloader = load_dataset(500,
                                                     img_size,
                                                     batch_size,
-                                                    dir_img =  r'E:\splicing_1_img\img',
-                                                    dir_mask =  r"E:\splicing_1_annotations\probe_mask"
+                                                    dir_img =  r'D:\dataset\splicing_1_img-20221031T095725Z-001\splicing_1_img\img',
+                                                    dir_mask =  r"D:\dataset\splicing_1_annotations-20221031T104824Z-001\splicing_1_annotations\probe_mask"
     )
 
 
@@ -60,7 +61,7 @@ def train_net(net,
     Valida_dice = []
     EPOCH = []
     spend_total_time = []
-    max_loss = 0.0
+    
 
     for epoch in range(epochs):
         net.train()
@@ -73,12 +74,7 @@ def train_net(net,
             start_batch = time.time()
             imgs = data['image']
             true_masks = data['landmarks']
-            # imgs = np.array([i[0] for i in b]).astype(np.float32)
-            # true_masks = np.array([i[1] for i in b]).astype(np.float32) / 255.
-
-            # imgs = torch.from_numpy(imgs)
-            # true_masks = torch.from_numpy(true_masks)
-
+    
             if gpu:
                 imgs = imgs.cuda()
                 true_masks = true_masks.cuda()
@@ -135,7 +131,7 @@ def train_net(net,
         plt.legend(handles=[l1, l2], labels=['Tra_loss', 'Val_dice'], loc='best')
         plt.savefig(dir_logs + 'Training Process for lr-{}.png'.format(lr), dpi=600)
         plt.close()
-        if epoch > 40:
+        if epoch %4== 0:
             torch.save(net.state_dict(),
                    dir_logs + '{}-[val_dice]-{:.4f}-[train_loss]-{:.4f}.pkl'.format(dataset, val_dice, epoch_loss / i))
         spend_per_time = time.time() - start_epoch
@@ -148,9 +144,9 @@ def train_net(net,
 
 def main():
     # config parameters
-    epochs = 1
-    batchsize = 2
-    image_size = 512 #  x(512,512,3) y(512,512,1)
+    epochs = 50
+    batchsize = 1
+    image_size = 256 #  x(512,512,3) y(512,512,1)
     gpu = True
     lr = 1e-3
     checkpoint = False
@@ -161,7 +157,7 @@ def main():
     # log directory 생성
     os.makedirs(dir_logs,exist_ok=True)
 
-    net = Ringed_Res_Unet(n_channels=3, n_classes=1)
+    net = UNet_2Plus(in_channels=3, n_classes=1)
 
     # 훈련 epoch 나눠서 진행 할 때 True 사용
     if checkpoint:
